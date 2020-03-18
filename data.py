@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 
 
 class SimpleSine(Dataset):
-    def __init__(self, num_samples=1000, num_points=100):
+    def __init__(self, num_samples=1600, num_points=100):
         self.num_samples = num_samples
         self.num_points = num_points
         self.data = []
