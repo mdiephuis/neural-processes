@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.distributions as td
+import torch.optim
 
 
 class SimpleNP(nn.Module):
@@ -83,3 +84,52 @@ class SimpleNP(nn.Module):
             yt_hat = self.decode(xt, z_draw)
 
             return yt_hat
+
+
+def neural_tangent_kernel_1d(model, x):
+    '''
+        Determine the neural tangent kernel of the model and inputs
+        and the gradient feature map
+
+        1D only
+    '''
+    output = model(x)
+    param_vector = nn.utils.parameters_to_vector(model.parameters())
+
+    # transpose jacobian: (grad y(w))^T)
+    features = torch.zeros(output.size(0), param_vector.size(0), requires_grad=False)
+
+    # Loop over all data points
+    for i in range(output.size(0)):
+        model.zero_grad()
+        output[i].backward(retain_graph=True)
+        all_grad = []
+        for p in model.parameters():
+            all_grad.append(p.grad.reshape(-1))
+        features[i, :] = torch.cat(all_grad)
+
+    # tangent_kernel = torch.bmm(features, features.t())
+    tangent_kernel = features @ features.t()
+
+    return features, tangent_kernel
+
+
+def gradient_descent(model, x, y, n_iters=100):
+    '''
+    Run gradient descent using square loss on the model and all the data
+    '''
+    optim = torch.optim.SGD(model.parameters(), lr=1e-3)
+    loss_func = nn.MSELoss()
+    model.train()
+
+    for i in range(n_iters):
+        y_hat = model(x)
+
+        loss = loss_func(y_hat, y)
+
+        model.zero_grad()
+        loss.backward()
+        optim.step()
+
+    return
+
